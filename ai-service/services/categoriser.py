@@ -4,7 +4,12 @@ import json
 import logging
 
 from clients import GroqClient, GroqError
-from prompts.categorise_prompts import CATEGORISE_SYSTEM_V1, build_categorise_user_v1
+from prompts.categorise_prompts import (
+    CATEGORISE_SYSTEM_V1,
+    CATEGORISE_SYSTEM_V2,
+    build_categorise_user_v1,
+    build_categorise_user_v2,
+)
 from schemas.categorise import (
     ALLOWED_CATEGORIES,
     ALLOWED_SEVERITY,
@@ -20,13 +25,20 @@ class CategoriserError(Exception):
 
 
 class Categoriser:
-    def __init__(self, groq: GroqClient) -> None:
+    def __init__(self, groq: GroqClient, prompt_version: str = "v2") -> None:
         self._groq = groq
+        self._prompt_version = prompt_version
 
     def categorise(self, req: CategoriseRequest) -> CategoriseResult:
+        if self._prompt_version == "v1":
+            system = CATEGORISE_SYSTEM_V1
+            user = build_categorise_user_v1(req.title, req.description, req.context)
+        else:
+            system = CATEGORISE_SYSTEM_V2
+            user = build_categorise_user_v2(req.title, req.description, req.context)
         messages = [
-            {"role": "system", "content": CATEGORISE_SYSTEM_V1},
-            {"role": "user", "content": build_categorise_user_v1(req.title, req.description, req.context)},
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
         ]
         try:
             resp = self._groq.chat(
