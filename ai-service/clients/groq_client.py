@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import random
 import time
@@ -40,16 +41,65 @@ class GroqClient:
         max_tokens: int = 1024,
         response_format: dict[str, str] | None = None,
     ) -> dict[str, Any]:
+        body = self._body(messages, model, temperature, max_tokens, response_format, stream=False)
+        return self._call_with_retry(body)
+
+    def chat_stream(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        model: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 1024,
+    ) -> Iterator[str]:
+        body = self._body(messages, model, temperature, max_tokens, None, stream=True)
+        url = f"{self._cfg.base_url}/chat/completions"
+        try:
+            resp = self._session.post(url, json=body, timeout=self._cfg.timeout_s, stream=True)
+        except requests.Timeout as exc:
+            raise GroqTimeoutError(str(exc)) from exc
+        except requests.RequestException as exc:
+            raise GroqError(str(exc)) from exc
+        if resp.status_code >= 400:
+            self._raise_for_status(resp)
+
+        for raw in resp.iter_lines(decode_unicode=True):
+            if not raw or not raw.startswith("data:"):
+                continue
+            payload = raw[5:].strip()
+            if payload == "[DONE]":
+                return
+            try:
+                obj = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            choices = obj.get("choices") or []
+            if not choices:
+                continue
+            delta = choices[0].get("delta") or {}
+            piece = delta.get("content")
+            if piece:
+                yield piece
+
+    def _body(
+        self,
+        messages: list[dict[str, str]],
+        model: str | None,
+        temperature: float,
+        max_tokens: int,
+        response_format: dict[str, str] | None,
+        stream: bool,
+    ) -> dict[str, Any]:
         body: dict[str, Any] = {
             "model": model or self._cfg.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "stream": False,
+            "stream": stream,
         }
         if response_format:
             body["response_format"] = response_format
-        return self._call_with_retry(body)
+        return body
 
     def _call_with_retry(self, body: dict[str, Any]) -> dict[str, Any]:
         last: Exception | None = None

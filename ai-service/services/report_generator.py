@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import asdict
+from typing import Iterator
 
 from clients import GroqClient, GroqError
 from prompts.report_prompts import REPORT_SYSTEM_V1, build_report_user_v1
@@ -18,8 +19,8 @@ class ReportGenerator:
     def __init__(self, groq: GroqClient) -> None:
         self._groq = groq
 
-    def generate(self, req: ReportRequest) -> ReportResult:
-        messages = [
+    def _messages(self, req: ReportRequest) -> list[dict[str, str]]:
+        return [
             {"role": "system", "content": REPORT_SYSTEM_V1},
             {
                 "role": "user",
@@ -31,9 +32,11 @@ class ReportGenerator:
                 ),
             },
         ]
+
+    def generate(self, req: ReportRequest) -> ReportResult:
         try:
             resp = self._groq.chat(
-                messages,
+                self._messages(req),
                 temperature=0.3,
                 max_tokens=2048,
             )
@@ -41,11 +44,20 @@ class ReportGenerator:
             raise ReportGeneratorError(f"groq call failed: {exc}") from exc
 
         content = resp["choices"][0]["message"]["content"].strip()
-        usage = resp.get("usage", {})
         return ReportResult(
             content=content,
             audience=req.audience,
             format=req.format,
             risk_count=len(req.risks),
-            metadata={"model": resp.get("model"), "usage": usage},
+            metadata={"model": resp.get("model"), "usage": resp.get("usage", {})},
         )
+
+    def generate_stream(self, req: ReportRequest) -> Iterator[str]:
+        try:
+            yield from self._groq.chat_stream(
+                self._messages(req),
+                temperature=0.3,
+                max_tokens=2048,
+            )
+        except GroqError as exc:
+            raise ReportGeneratorError(f"groq stream failed: {exc}") from exc
