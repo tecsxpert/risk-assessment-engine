@@ -30,19 +30,19 @@ function App() {
           <ProtectedRoute><DashboardPage /></ProtectedRoute>
         }/>
         <Route path="/risks" element={
-          <ListPage />
+          <ProtectedRoute><ListPage /></ProtectedRoute>
         }/>
         <Route path="/risks/new" element={
-          <FormPage />
+          <ProtectedRoute><FormPage /></ProtectedRoute>
         }/>
         <Route path="/risks/:id" element={
-          <DetailPage />
+          <ProtectedRoute><DetailPage /></ProtectedRoute>
         }/>
         <Route path="/risks/:id/edit" element={
-          <FormPage />
+          <ProtectedRoute><FormPage /></ProtectedRoute>
         }/>
         <Route path="/analytics" element={
-         <AnalyticsPage />
+         <ProtectedRoute><AnalyticsPage /></ProtectedRoute>
         }/>
 
         {/* fallback */}

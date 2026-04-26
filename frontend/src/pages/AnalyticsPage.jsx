@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getRiskStats, getAllRisks, exportRisksCSV } from '../services/riskService'
@@ -6,7 +6,7 @@ import ReportStreamer from '../components/ReportStreamer'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie, Legend,
-  LineChart, Line, Area, AreaChart,
+  AreaChart, Area,
 } from 'recharts'
 
 // colour palettes 
@@ -17,8 +17,8 @@ const CATEGORY_COLOURS = [
 
 const STATUS_COLOURS = {
   OPEN:      '#E74C3C',
-  MITIGATED: '#F39C12',
-  CLOSED:    '#27AE60',
+  MITIGATED: '#F59E0B',
+  CLOSED:    '#10B981',
 }
 
 const SEVERITY_COLOURS = {
@@ -27,28 +27,78 @@ const SEVERITY_COLOURS = {
   LOW:    '#10B981',
 }
 
-//  helpers 
-function getMonthLabel(dateStr) {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    month: 'short', year: '2-digit',
-  })
+// mock data — used when backend is not running 
+const MOCK_STATS = {
+  totalRisks:   30,
+  highSeverity:  8,
+  openRisks:    14,
+  mitigated:    10,
+  byCategory: [
+    { name: 'Operational',  count: 8 },
+    { name: 'Financial',    count: 6 },
+    { name: 'Strategic',    count: 5 },
+    { name: 'Compliance',   count: 4 },
+    { name: 'Reputational', count: 3 },
+    { name: 'Technical',    count: 3 },
+    { name: 'Other',        count: 1 },
+  ],
+  byStatus: [
+    { name: 'OPEN',      count: 14 },
+    { name: 'MITIGATED', count: 10 },
+    { name: 'CLOSED',    count:  6 },
+  ],
+  bySeverity: [
+    { name: 'HIGH',   count:  8 },
+    { name: 'MEDIUM', count: 13 },
+    { name: 'LOW',    count:  9 },
+  ],
 }
 
+const MOCK_MONTHLY = [
+  { month: 'Nov 24', count: 2  },
+  { month: 'Dec 24', count: 4  },
+  { month: 'Jan 25', count: 5  },
+  { month: 'Feb 25', count: 7  },
+  { month: 'Mar 25', count: 6  },
+  { month: 'Apr 25', count: 6  },
+]
+
+//  helpers 
 function buildMonthlyData(risks) {
+  if (!risks?.length) return []
   const map = {}
   risks.forEach(r => {
     if (!r.createdDate) return
-    const label = getMonthLabel(r.createdDate)
+    const d     = new Date(r.createdDate)
+    const label = d.toLocaleDateString('en-GB', {
+      month: 'short', year: '2-digit',
+    })
     map[label] = (map[label] ?? 0) + 1
   })
   return Object.entries(map)
-    .sort(([a], [b]) => new Date('01 ' + a) - new Date('01 ' + b))
-    .slice(-6)
+    .sort(([a], [b]) => {
+      const parse = s => new Date('01 ' + s)
+      return parse(a) - parse(b)
+    })
     .map(([month, count]) => ({ month, count }))
 }
 
-// components OUTSIDE to prevent remount 
-function Navbar({ navigate, onLogout, user }) {
+function buildPieData(arr) {
+  if (!arr?.length) return []
+  const total = arr.reduce((s, i) => s + i.count, 0)
+  return arr.map((item, i) => ({
+    name:    item.name,
+    value:   item.count,
+    fill:    STATUS_COLOURS[item.name]
+          ?? SEVERITY_COLOURS[item.name]
+          ?? CATEGORY_COLOURS[i % CATEGORY_COLOURS.length],
+    percent: total ? Math.round((item.count / total) * 100) : 0,
+  }))
+}
+
+//  sub-components defined OUTSIDE to prevent remount 
+
+function Navbar({ navigate, onLogout }) {
   return (
     <nav className="bg-primary text-white px-6 py-4 flex items-center
                     justify-between shadow sticky top-0 z-20">
@@ -64,22 +114,20 @@ function Navbar({ navigate, onLogout, user }) {
       </div>
       <div className="flex gap-4 text-sm items-center">
         <button onClick={() => navigate('/')}
-          className="hover:underline opacity-80 hover:opacity-100 transition">
+          className="opacity-80 hover:opacity-100 hover:underline transition">
           Dashboard
         </button>
         <button onClick={() => navigate('/risks')}
-          className="hover:underline opacity-80 hover:opacity-100 transition">
+          className="opacity-80 hover:opacity-100 hover:underline transition">
           Risks
         </button>
         <button onClick={() => navigate('/analytics')}
           className="underline font-semibold">
           Analytics
         </button>
-        <button
-          onClick={onLogout}
+        <button onClick={onLogout}
           className="ml-2 px-3 py-1 border border-blue-300 rounded-lg
-                     text-xs hover:bg-white hover:text-primary transition"
-        >
+                     text-xs hover:bg-white hover:text-primary transition">
           Logout
         </button>
       </div>
@@ -87,146 +135,240 @@ function Navbar({ navigate, onLogout, user }) {
   )
 }
 
-function ChartCard({ title, subtitle, children, loading, action }) {
+function KpiCard({ label, value, icon, textColour, bgColour, loading, trend }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 ${bgColour} rounded-xl flex items-center
+                         justify-center text-lg shrink-0`}>
+          {icon}
+        </div>
+        {trend != null && !loading && (
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
+            ${trend >= 0
+              ? 'bg-red-50 text-red-600'
+              : 'bg-green-50 text-green-600'}`}>
+            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}
+          </span>
+        )}
+      </div>
+      {loading ? (
+        <div className="space-y-2">
+          <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+          <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
+        </div>
+      ) : (
+        <>
+          <p className={`text-3xl font-bold ${textColour} leading-none mb-1`}>
+            {value ?? '—'}
+          </p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider">
+            {label}
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+function ChartCard({ title, subtitle, children, loading, action, height = 280 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-start justify-between mb-5 gap-3">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
           {subtitle && (
             <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
           )}
         </div>
-        {action}
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       {loading ? (
-        <div className="h-64 bg-gray-50 rounded-xl animate-pulse
-                        flex items-center justify-center">
-          <p className="text-xs text-gray-400">Loading chart...</p>
+        <div className={`bg-gray-50 rounded-xl animate-pulse flex items-center
+                         justify-center`}
+          style={{ height }}>
+          <div className="text-center">
+            <div className="flex gap-1 justify-center mb-2">
+              {[0,1,2].map(i => (
+                <div key={i}
+                  className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"
+                  style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+            <p className="text-xs text-gray-400">Loading chart...</p>
+          </div>
         </div>
-      ) : children}
+      ) : (
+        <div style={{ height }}>
+          {children}
+        </div>
+      )}
     </div>
   )
 }
 
-function CustomTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
+function PeriodSelector({ value, onChange }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-lg
-                    px-4 py-3 text-sm">
-      <p className="font-semibold text-gray-700 mb-1">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.fill ?? p.stroke ?? p.color }}>
-          {p.name}: <span className="font-bold">{p.value}</span>
-        </p>
+    <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+      {[
+        { key: '3m',  label: '3M'  },
+        { key: '6m',  label: '6M'  },
+        { key: 'all', label: 'All' },
+      ].map(({ key, label }) => (
+        <button
+          key={key}
+          onClick={() => onChange(key)}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg
+                      transition
+                      ${value === key
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          {label}
+        </button>
       ))}
     </div>
   )
 }
 
-function PieTooltip({ active, payload }) {
+function CustomBarTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-lg
-                    px-3 py-2 text-xs">
-      <p className="font-semibold" style={{ color: payload[0].payload.fill }}>
-        {payload[0].name}
+                    px-4 py-3 text-sm min-w-[120px]">
+      <p className="font-semibold text-gray-700 mb-1 text-xs uppercase
+                    tracking-wide">
+        {label}
       </p>
-      <p className="text-gray-700">
-        Count: <strong>{payload[0].value}</strong>
+      <p style={{ color: payload[0]?.fill }}>
+        Risks:{' '}
+        <span className="font-bold text-gray-800">{payload[0]?.value}</span>
+      </p>
+    </div>
+  )
+}
+
+function CustomPieTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-lg
+                    px-3 py-2.5 text-xs min-w-[120px]">
+      <p className="font-bold mb-1" style={{ color: d.payload.fill }}>
+        {d.name}
+      </p>
+      <p className="text-gray-600">
+        Count: <strong className="text-gray-800">{d.value}</strong>
       </p>
       <p className="text-gray-500">
-        Share: <strong>{payload[0].payload.percent}%</strong>
+        Share: <strong>{d.payload.percent}%</strong>
       </p>
     </div>
   )
 }
 
-function KpiCard({ label, value, icon, colour, loading }) {
+function CustomLineTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm
-                    p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center
-                       text-xl shrink-0 ${colour} bg-opacity-10`}>
-        {icon}
+    <div className="bg-white border border-gray-200 rounded-xl shadow-lg
+                    px-4 py-3 text-sm">
+      <p className="font-semibold text-gray-700 mb-1">{label}</p>
+      <p className="text-primary">
+        New Risks:{' '}
+        <span className="font-bold text-gray-800">{payload[0]?.value}</span>
+      </p>
+    </div>
+  )
+}
+
+function EmptyChart({ message = 'No data available' }) {
+  return (
+    <div className="h-full flex flex-col items-center justify-center
+                    text-gray-400 gap-2">
+      <svg className="w-10 h-10 text-gray-200" fill="none"
+        stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round"
+          d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0
+             01-1 1H5a1 1 0 01-1-1V4z" />
+      </svg>
+      <p className="text-sm text-gray-400">{message}</p>
+    </div>
+  )
+}
+
+function StatusProgressRow({ item, total }) {
+  const pct = total ? Math.round((item.count / total) * 100) : 0
+  const colour = STATUS_COLOURS[item.name] ?? '#1B4F8A'
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full shrink-0"
+            style={{ backgroundColor: colour }} />
+          <span className="text-sm text-gray-700 font-medium">
+            {item.name}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-gray-800">
+            {item.count}
+          </span>
+          <span className="text-xs text-gray-400 w-8 text-right">
+            {pct}%
+          </span>
+        </div>
       </div>
-      <div>
-        <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
-          {label}
-        </p>
-        {loading ? (
-          <div className="h-7 w-12 bg-gray-200 rounded animate-pulse" />
-        ) : (
-          <p className={`text-2xl font-bold ${colour}`}>{value ?? '—'}</p>
-        )}
+      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, backgroundColor: colour }}
+        />
       </div>
     </div>
   )
 }
 
-// main component
+// ════════════════════════════════════════════════════════════════════════════
 export default function AnalyticsPage() {
-  const navigate        = useNavigate()
-  const { logout, user } = useAuth()
+  const navigate         = useNavigate()
+  const { logout }       = useAuth()
 
-  const [stats, setStats]         = useState(null)
-  const [allRisks, setAllRisks]   = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(null)
-  const [period, setPeriod]       = useState('6m')
-  const [exporting, setExporting] = useState(false)
+  const [stats, setStats]           = useState(null)
+  const [allRisks, setAllRisks]     = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [usingMock, setUsingMock]   = useState(false)
+  const [period, setPeriod]         = useState('6m')
+  const [exporting, setExporting]   = useState(false)
+  const [chartView, setChartView]   = useState('category')
 
-  //  fetch data 
-  useEffect(() => {
+  //  fetch 
+  const fetchData = useCallback(async () => {
     setLoading(true)
-    Promise.allSettled([
+    const [statsRes, risksRes] = await Promise.allSettled([
       getRiskStats(),
-      getAllRisks(0, 200, 'createdDate', 'asc'),
-    ]).then(([statsRes, risksRes]) => {
+      getAllRisks(0, 500, 'createdDate', 'asc'),
+    ])
 
-      // stats
-      if (statsRes.status === 'fulfilled') {
-        setStats(statsRes.value.data)
-      } else {
-        // mock data if backend not ready
-        setStats({
-          totalRisks:   30,
-          highSeverity: 8,
-          openRisks:    14,
-          mitigated:    10,
-          byCategory: [
-            { name: 'Operational',  count: 8 },
-            { name: 'Financial',    count: 6 },
-            { name: 'Strategic',    count: 5 },
-            { name: 'Compliance',   count: 4 },
-            { name: 'Reputational', count: 3 },
-            { name: 'Technical',    count: 3 },
-            { name: 'Other',        count: 1 },
-          ],
-          byStatus: [
-            { name: 'OPEN',      count: 14 },
-            { name: 'MITIGATED', count: 10 },
-            { name: 'CLOSED',    count: 6  },
-          ],
-          bySeverity: [
-            { name: 'HIGH',   count: 8  },
-            { name: 'MEDIUM', count: 13 },
-            { name: 'LOW',    count: 9  },
-          ],
-        })
-        setError('Using demo data — connect backend for live analytics.')
-      }
+    if (statsRes.status === 'fulfilled') {
+      setStats(statsRes.value.data)
+      setUsingMock(false)
+    } else {
+      setStats(MOCK_STATS)
+      setUsingMock(true)
+    }
 
-      // all risks for line chart
-      if (risksRes.status === 'fulfilled') {
-        const list = risksRes.value.data?.content
-                  ?? risksRes.value.data
-                  ?? []
-        setAllRisks(Array.isArray(list) ? list : [])
-      }
+    if (risksRes.status === 'fulfilled') {
+      const raw = risksRes.value.data
+      const list = raw?.content ?? (Array.isArray(raw) ? raw : [])
+      setAllRisks(list)
+    } else {
+      setAllRisks([])
+    }
 
-    }).finally(() => setLoading(false))
+    setLoading(false)
   }, [])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   //  CSV export 
   async function handleExport() {
@@ -236,7 +378,7 @@ export default function AnalyticsPage() {
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const a   = document.createElement('a')
       a.href    = url
-      a.download = `risk-export-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `risks-${new Date().toISOString().split('T')[0]}.csv`
       a.click()
       window.URL.revokeObjectURL(url)
     } catch {
@@ -246,36 +388,39 @@ export default function AnalyticsPage() {
     }
   }
 
-  //  build pie data with percentages 
-  function buildPieData(arr) {
-    if (!arr?.length) return []
-    const total = arr.reduce((s, i) => s + i.count, 0)
-    return arr.map((item, i) => ({
-      name:    item.name,
-      value:   item.count,
-      fill:    STATUS_COLOURS[item.name]
-            ?? SEVERITY_COLOURS[item.name]
-            ?? CATEGORY_COLOURS[i % CATEGORY_COLOURS.length],
-      percent: total ? Math.round((item.count / total) * 100) : 0,
-    }))
-  }
+  // derived chart data 
+  const allMonthly = usingMock
+    ? MOCK_MONTHLY
+    : buildMonthlyData(allRisks)
 
-  //  monthly line chart data filtered by period 
-  const monthlyData = buildMonthlyData(allRisks)
   const filteredMonthly = period === '3m'
-    ? monthlyData.slice(-3)
+    ? allMonthly.slice(-3)
     : period === '6m'
-    ? monthlyData.slice(-6)
-    : monthlyData
+    ? allMonthly.slice(-6)
+    : allMonthly
 
   const pieStatusData   = buildPieData(stats?.byStatus   ?? [])
   const pieSeverityData = buildPieData(stats?.bySeverity ?? [])
 
-  //  main component
+  const barData = chartView === 'severity'
+    ? stats?.bySeverity ?? []
+    : chartView === 'status'
+    ? stats?.byStatus   ?? []
+    : stats?.byCategory ?? []
+
+  const getBarColour = (entry, index) => {
+    if (chartView === 'severity') return SEVERITY_COLOURS[entry.name] ?? '#1B4F8A'
+    if (chartView === 'status')   return STATUS_COLOURS[entry.name]   ?? '#1B4F8A'
+    return CATEGORY_COLOURS[index % CATEGORY_COLOURS.length]
+  }
+
+  const totalRisks = stats?.totalRisks ?? 0
+
+  // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
 
-      <Navbar navigate={navigate} onLogout={logout} user={user} />
+      <Navbar navigate={navigate} onLogout={logout} />
 
       <div className="max-w-screen-xl mx-auto px-6 py-8">
 
@@ -285,173 +430,250 @@ export default function AnalyticsPage() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Analytics</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Risk trends, distributions and AI report generation
+              Risk trends, distribution charts and AI report generation
             </p>
           </div>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary
-                       text-white text-sm font-medium rounded-xl
-                       hover:opacity-90 disabled:opacity-50 transition"
-          >
-            {exporting ? (
-              <>
-                <svg className="animate-spin h-4 w-4" fill="none"
-                  viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10"
-                    stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8z"/>
-                </svg>
-                Exporting...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor"
-                  strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4
-                       4m0 0l-4-4m4 4V4" />
-                </svg>
-                Export CSV
-              </>
-            )}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="px-4 py-2.5 border border-gray-200 text-gray-600
+                         text-sm font-medium rounded-xl hover:bg-gray-50
+                         disabled:opacity-40 transition flex items-center gap-2"
+            >
+              <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
+                fill="none" stroke="currentColor" strokeWidth="2"
+                viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0
+                     0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357
+                     2H15" />
+              </svg>
+              Refresh
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="px-4 py-2.5 bg-primary text-white text-sm
+                         font-medium rounded-xl hover:opacity-90
+                         disabled:opacity-50 transition flex items-center gap-2"
+            >
+              {exporting ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none"
+                    viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10"
+                      stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor"
+                    strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4
+                         4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Export CSV
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* error banner */}
-        {error && (
-          <div className="mb-6 px-4 py-3 bg-yellow-50 border border-yellow-200
-                          text-yellow-800 rounded-xl text-sm flex items-center
-                          gap-2">
-            <span>⚠</span>
-            <span>{error}</span>
+        {/* mock data warning */}
+        {usingMock && (
+          <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200
+                          text-amber-800 rounded-xl text-sm flex items-center
+                          gap-3">
+            <svg className="w-5 h-5 shrink-0" fill="none"
+              stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948
+                   3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949
+                   3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12
+                   15.75h.007v.008H12v-.008z" />
+            </svg>
+            <span>
+              <strong>Demo data shown</strong> — backend not reachable.
+              Connect the backend on port 8080 to see live analytics.
+            </span>
           </div>
         )}
 
-        {/* ── KPI row ── */}
+        {/* ── KPI cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <KpiCard label="Total Risks"   value={stats?.totalRisks}
-            icon="📋" colour="text-primary"    loading={loading} />
-          <KpiCard label="High Severity" value={stats?.highSeverity}
-            icon="🔴" colour="text-red-600"    loading={loading} />
-          <KpiCard label="Open Risks"    value={stats?.openRisks}
-            icon="⚠️" colour="text-yellow-600" loading={loading} />
-          <KpiCard label="Mitigated"     value={stats?.mitigated}
-            icon="✅" colour="text-green-600"  loading={loading} />
+          <KpiCard
+            label="Total Risks"
+            value={stats?.totalRisks}
+            icon="📋"
+            textColour="text-primary"
+            bgColour="bg-blue-50"
+            loading={loading}
+          />
+          <KpiCard
+            label="High Severity"
+            value={stats?.highSeverity}
+            icon="🔴"
+            textColour="text-red-600"
+            bgColour="bg-red-50"
+            loading={loading}
+            trend={stats?.highSeverity}
+          />
+          <KpiCard
+            label="Open Risks"
+            value={stats?.openRisks}
+            icon="⚠️"
+            textColour="text-yellow-600"
+            bgColour="bg-yellow-50"
+            loading={loading}
+          />
+          <KpiCard
+            label="Mitigated"
+            value={stats?.mitigated}
+            icon="✅"
+            textColour="text-green-600"
+            bgColour="bg-green-50"
+            loading={loading}
+          />
         </div>
 
-        {/* ── Row 1: BarChart + PieChart status ── */}
+        {/* ── Row 1: Main BarChart (2/3) + Status breakdown (1/3) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
-          {/* BarChart by category */}
-          <ChartCard
-            title="Risks by Category"
-            subtitle="Distribution across risk categories"
-            loading={loading}
-            className="lg:col-span-2"
-          >
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={stats?.byCategory ?? []}
-                margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
-                barSize={36}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"
-                  vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }}
-                  axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#6b7280' }}
-                  axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" name="Risks" radius={[6, 6, 0, 0]}>
-                  {(stats?.byCategory ?? []).map((_, i) => (
-                    <Cell key={i}
-                      fill={CATEGORY_COLOURS[i % CATEGORY_COLOURS.length]} />
+          {/* BarChart with view toggle */}
+          <div className="lg:col-span-2">
+            <ChartCard
+              title="Risk Distribution"
+              subtitle={`Showing risks by ${chartView}`}
+              loading={loading}
+              height={300}
+              action={
+                <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+                  {[
+                    { key: 'category', label: 'Category' },
+                    { key: 'severity', label: 'Severity' },
+                    { key: 'status',   label: 'Status'   },
+                  ].map(({ key, label }) => (
+                    <button key={key}
+                      onClick={() => setChartView(key)}
+                      className={`px-3 py-1.5 text-xs font-semibold
+                                  rounded-lg transition
+                        ${chartView === key
+                          ? 'bg-white text-primary shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'}`}>
+                      {label}
+                    </button>
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* PieChart by status */}
-          <ChartCard
-            title="By Status"
-            subtitle="Open · Mitigated · Closed"
-            loading={loading}
-          >
-            {pieStatusData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={pieStatusData}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                    dataKey="value"
+                </div>
+              }
+            >
+              {barData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={barData}
+                    margin={{ top: 5, right: 10, left: -15, bottom: 5 }}
+                    barSize={40}
                   >
-                    {pieStatusData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<PieTooltip />} />
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(value) => (
-                      <span className="text-xs text-gray-600">{value}</span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"
+                      vertical={false} />
+                    <XAxis dataKey="name"
+                      tick={{ fontSize: 11, fill: '#9ca3af' }}
+                      axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }}
+                      axisLine={false} tickLine={false}
+                      allowDecimals={false} />
+                    <Tooltip content={<CustomBarTooltip />} />
+                    <Bar dataKey="count" name="Risks"
+                      radius={[6, 6, 0, 0]}>
+                      {barData.map((entry, index) => (
+                        <Cell key={index}
+                          fill={getBarColour(entry, index)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyChart />
+              )}
+            </ChartCard>
+          </div>
+
+          {/* Status progress bars */}
+          <div className="bg-white rounded-2xl border border-gray-200
+                          shadow-sm p-6">
+            <h3 className="text-sm font-semibold text-gray-800 mb-1">
+              Status Breakdown
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">
+              Progress toward risk resolution
+            </p>
+
+            {loading ? (
+              <div className="space-y-4">
+                {[1,2,3].map(i => (
+                  <div key={i} className="space-y-1.5">
+                    <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                    <div className="h-2 bg-gray-100 rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="h-64 flex items-center justify-center
-                              text-gray-400 text-sm">
-                No data available
+              <div className="space-y-4">
+                {(stats?.byStatus ?? []).map(item => (
+                  <StatusProgressRow
+                    key={item.name}
+                    item={item}
+                    total={totalRisks}
+                  />
+                ))}
               </div>
             )}
-          </ChartCard>
+
+            {/* resolution rate */}
+            {!loading && totalRisks > 0 && (
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-400 mb-1">
+                  Resolution Rate
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {Math.round(
+                    ((stats?.mitigated ?? 0) / totalRisks) * 100
+                  )}%
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  of risks mitigated or closed
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* ── Row 2: LineChart + PieChart severity ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* ── Row 2: AreaChart LineChart over 6 months ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-          {/* LineChart over time */}
+          {/* Area LineChart — risks over time */}
           <ChartCard
             title="Risks Over Time"
             subtitle="New risks registered per month"
             loading={loading}
-            action={
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-                {['3m', '6m', 'all'].map(p => (
-                  <button key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md
-                                transition
-                      ${period === p
-                        ? 'bg-white text-primary shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'}`}
-                  >
-                    {p === 'all' ? 'All' : p.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            }
+            height={260}
+            action={<PeriodSelector value={period} onChange={setPeriod} />}
           >
             {filteredMonthly.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={filteredMonthly}
-                  margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
+                  margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
                 >
                   <defs>
-                    <linearGradient id="areaGrad" x1="0" y1="0"
+                    <linearGradient id="lineGrad" x1="0" y1="0"
                       x2="0" y2="1">
                       <stop offset="5%"  stopColor="#1B4F8A"
-                        stopOpacity={0.15} />
+                        stopOpacity={0.2} />
                       <stop offset="95%" stopColor="#1B4F8A"
                         stopOpacity={0} />
                     </linearGradient>
@@ -459,114 +681,186 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"
                     vertical={false} />
                   <XAxis dataKey="month"
-                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                    tick={{ fontSize: 11, fill: '#9ca3af' }}
                     axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#6b7280' }}
+                  <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }}
                     axisLine={false} tickLine={false}
                     allowDecimals={false} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<CustomLineTooltip />} />
                   <Area
                     type="monotone"
                     dataKey="count"
                     name="New Risks"
                     stroke="#1B4F8A"
                     strokeWidth={2.5}
-                    fill="url(#areaGrad)"
-                    dot={{ fill: '#1B4F8A', r: 4 }}
-                    activeDot={{ r: 6 }}
+                    fill="url(#lineGrad)"
+                    dot={{ fill: '#1B4F8A', r: 4, strokeWidth: 2,
+                           stroke: '#fff' }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-64 flex flex-col items-center justify-center
-                              text-gray-400 gap-2">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor"
-                  strokeWidth="1.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1
-                       1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-                <p className="text-sm">No time data available</p>
-              </div>
+              <EmptyChart message="No monthly data available" />
             )}
           </ChartCard>
 
+          {/* PieChart by status */}
+          <ChartCard
+            title="Status Distribution"
+            subtitle="Risk counts by current status"
+            loading={loading}
+            height={260}
+          >
+            {pieStatusData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieStatusData}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={4}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {pieStatusData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomPieTooltip />} />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={v => (
+                      <span style={{ fontSize: 11, color: '#6b7280' }}>
+                        {v}
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <EmptyChart />}
+          </ChartCard>
+        </div>
+
+        {/* ── Row 3: PieChart severity + Severity BarChart ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
           {/* PieChart by severity */}
           <ChartCard
-            title="By Severity"
-            subtitle="HIGH · MEDIUM · LOW"
+            title="Severity Distribution"
+            subtitle="HIGH · MEDIUM · LOW breakdown"
             loading={loading}
+            height={260}
           >
             {pieSeverityData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieSeverityData}
                     cx="50%"
                     cy="45%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={4}
                     dataKey="value"
+                    strokeWidth={0}
                   >
                     {pieSeverityData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
                     ))}
                   </Pie>
-                  <Tooltip content={<PieTooltip />} />
+                  <Tooltip content={<CustomPieTooltip />} />
                   <Legend
                     iconType="circle"
                     iconSize={8}
-                    formatter={(value) => (
-                      <span className="text-xs text-gray-600">{value}</span>
+                    formatter={v => (
+                      <span style={{ fontSize: 11, color: '#6b7280' }}>
+                        {v}
+                      </span>
                     )}
                   />
                 </PieChart>
               </ResponsiveContainer>
+            ) : <EmptyChart />}
+          </ChartCard>
+
+          {/* Severity summary cards */}
+          <div className="bg-white rounded-2xl border border-gray-200
+                          shadow-sm p-6">
+            <h3 className="text-sm font-semibold text-gray-800 mb-1">
+              Severity Summary
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">
+              Risk count by severity level
+            </p>
+
+            {loading ? (
+              <div className="space-y-3">
+                {[1,2,3].map(i => (
+                  <div key={i}
+                    className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                ))}
+              </div>
             ) : (
-              <div className="h-64 flex items-center justify-center
-                              text-gray-400 text-sm">
-                No data available
+              <div className="space-y-3">
+                {(stats?.bySeverity ?? []).map(item => {
+                  const colour = SEVERITY_COLOURS[item.name] ?? '#1B4F8A'
+                  const pct    = totalRisks
+                    ? Math.round((item.count / totalRisks) * 100)
+                    : 0
+                  return (
+                    <div key={item.name}
+                      className="flex items-center gap-4 p-4 rounded-xl
+                                 border border-gray-100 hover:border-gray-200
+                                 transition">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center
+                                   justify-center text-white text-sm font-bold
+                                   shrink-0"
+                        style={{ backgroundColor: colour }}
+                      >
+                        {item.name[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between mb-1.5">
+                          <span className="text-sm font-semibold text-gray-700">
+                            {item.name}
+                          </span>
+                          <span className="text-sm font-bold text-gray-800">
+                            {item.count}
+                            <span className="text-xs text-gray-400 font-normal
+                                             ml-1">
+                              ({pct}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full
+                                        overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all
+                                       duration-700"
+                            style={{
+                              width: `${pct}%`,
+                              backgroundColor: colour,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
-          </ChartCard>
+          </div>
         </div>
 
-        {/* ── Row 3: Severity BarChart ── */}
-        <div className="mb-6">
-          <ChartCard
-            title="Risks by Severity"
-            subtitle="Count of HIGH · MEDIUM · LOW severity risks"
-            loading={loading}
-          >
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={stats?.bySeverity ?? []}
-                margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
-                barSize={60}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"
-                  vertical={false} />
-                <XAxis dataKey="name"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={false} tickLine={false}
-                  allowDecimals={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" name="Risks" radius={[8, 8, 0, 0]}>
-                  {(stats?.bySeverity ?? []).map((entry) => (
-                    <Cell key={entry.name}
-                      fill={SEVERITY_COLOURS[entry.name] ?? '#1B4F8A'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
+        {/* ── AI Report Streamer ── */}
+        <div className="mb-2">
+          <ReportStreamer riskData={null} />
         </div>
-
-        {/* ── Row 4: AI Report Streamer ── */}
-        <ReportStreamer riskData={null} />
 
       </div>
     </div>
