@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { login } from '../services/authService'
 
-//  validation 
+//  validation function 
 function validate(form) {
   const errors = {}
   if (!form.email.trim())
@@ -17,7 +17,7 @@ function validate(form) {
   return errors
 }
 
-// input field — defined OUTSIDE to prevent focus loss
+//  input field — defined OUTSIDE to prevent focus loss 
 function InputField({ label, name, type, value, onChange, onBlur,
                       placeholder, error, touched }) {
   return (
@@ -34,9 +34,9 @@ function InputField({ label, name, type, value, onChange, onBlur,
         onBlur={onBlur}
         placeholder={placeholder}
         autoComplete={name === 'email' ? 'email' : 'current-password'}
-        className={`w-full px-3 py-2.5 border rounded text-sm
+        className={`w-full px-3 py-2.5 border rounded-xl text-sm
                     focus:outline-none focus:ring-2 focus:ring-primary
-                    transition
+                    focus:border-primary transition
                     ${touched && error
                       ? 'border-red-400 bg-red-50 focus:ring-red-400'
                       : 'border-gray-300 bg-white'}`}
@@ -55,10 +55,10 @@ export default function LoginPage() {
   const navigate              = useNavigate()
   const { login: storeToken } = useAuth()
 
-  const [form, setForm]           = useState({ email: '', password: '' })
-  const [errors, setErrors]       = useState({})
-  const [touched, setTouched]     = useState({})
-  const [loading, setLoading]     = useState(false)
+  const [form, setForm]             = useState({ email: '', password: '' })
+  const [errors, setErrors]         = useState({})
+  const [touched, setTouched]       = useState({})
+  const [loading, setLoading]       = useState(false)
   const [loginError, setLoginError] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
 
@@ -69,10 +69,7 @@ export default function LoginPage() {
     setForm(updated)
     if (touched[name]) {
       const newErrors = validate(updated)
-      setErrors(prev => ({
-        ...prev,
-        [name]: newErrors[name] ?? undefined,
-      }))
+      setErrors(prev => ({ ...prev, [name]: newErrors[name] ?? undefined }))
     }
   }
 
@@ -80,10 +77,7 @@ export default function LoginPage() {
     const { name } = e.target
     setTouched(prev => ({ ...prev, [name]: true }))
     const newErrors = validate(form)
-    setErrors(prev => ({
-      ...prev,
-      [name]: newErrors[name] ?? undefined,
-    }))
+    setErrors(prev => ({ ...prev, [name]: newErrors[name] ?? undefined }))
   }
 
   async function handleSubmit(e) {
@@ -140,7 +134,7 @@ export default function LoginPage() {
       {/* ── Logo / brand header ── */}
       <div className="mb-8 text-center">
         <div className="inline-flex items-center justify-center w-14 h-14
-                        bg-primary rounded-xl mb-4 shadow">
+                        bg-primary rounded-2xl mb-4 shadow">
           <svg className="w-8 h-8 text-white" fill="none"
             stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round"
@@ -153,7 +147,7 @@ export default function LoginPage() {
             />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-800">
+        <h1 className="text-2xl font-bold text-gray-800">
           Risk Assessment Engine
         </h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -162,13 +156,13 @@ export default function LoginPage() {
       </div>
 
       {/* ── Login card ── */}
-      <div className="w-full max-w-md bg-white rounded-xl shadow-sm
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm
                       border border-gray-200 p-8">
 
         {/* login error banner */}
         {loginError && (
           <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200
-                          text-red-700 rounded text-sm flex items-start gap-2">
+                          text-red-700 rounded-xl text-sm flex items-start gap-2">
             <span className="mt-0.5">⚠</span>
             <span>{loginError}</span>
           </div>
@@ -206,9 +200,9 @@ export default function LoginPage() {
                   onBlur={handleBlur}
                   placeholder="Enter your password"
                   autoComplete="current-password"
-                  className={`w-full px-3 py-2.5 pr-10 border rounded
+                  className={`w-full px-3 py-2.5 pr-10 border rounded-xl
                               text-sm focus:outline-none focus:ring-2
-                              focus:ring-primary transition
+                              focus:ring-primary focus:border-primary transition
                               ${touched.password && errors.password
                                 ? 'border-red-400 bg-red-50 focus:ring-red-400'
                                 : 'border-gray-300 bg-white'}`}
@@ -217,7 +211,8 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(prev => !prev)}
                   className="absolute right-3 top-1/2 -translate-y-1/2
-                             text-gray-400 hover:text-gray-600 text-xs"
+                             text-gray-400 hover:text-gray-600 text-xs
+                             transition"
                   tabIndex={-1}
                 >
                   {showPassword ? 'Hide' : 'Show'}
@@ -235,7 +230,7 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               className="w-full py-2.5 bg-primary text-white text-sm
-                         font-medium rounded hover:opacity-90
+                         font-medium rounded-xl hover:opacity-90
                          disabled:opacity-50 disabled:cursor-not-allowed
                          transition flex items-center justify-center gap-2
                          mt-2"
@@ -262,7 +257,7 @@ export default function LoginPage() {
           <div className="flex-1 h-px bg-gray-200" />
         </div>
 
-        {/* register link — OUTSIDE form */}
+        {/* register link */}
         <div className="text-center mb-5">
           <p className="text-sm text-gray-500">
             Don't have an account?{' '}
@@ -276,7 +271,7 @@ export default function LoginPage() {
         </div>
 
         {/* demo credentials */}
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
           <p className="text-xs font-semibold text-primary mb-2">
             Demo Credentials
           </p>

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getRiskById, deleteRisk } from '../services/riskService'
 import AiPanel from '../components/AiPanel'
-
-//  helpers 
+import Navbar from '../components/Navbar'   
+// helpers
 function formatDate(dateStr) {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('en-GB', {
@@ -19,7 +19,7 @@ function formatDateTime(dateStr) {
   })
 }
 
-//  badge styles  
+// badge styles
 const SEVERITY_STYLES = {
   HIGH:   'bg-red-100 text-red-700 border border-red-200',
   MEDIUM: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
@@ -32,46 +32,14 @@ const STATUS_STYLES = {
   CLOSED:    'bg-gray-100 text-gray-600 border border-gray-200',
 }
 
-//score helpers 
+// score helpers
 function scoreColour(score) {
-  if (score >= 75) return { ring: '#EF4444', text: 'text-red-600', label: 'Critical Risk', bg: 'bg-red-50' }
+  if (score >= 75) return { ring: '#EF4444', text: 'text-red-600',    label: 'Critical Risk', bg: 'bg-red-50'    }
   if (score >= 40) return { ring: '#F59E0B', text: 'text-yellow-600', label: 'Moderate Risk', bg: 'bg-yellow-50' }
-  return { ring: '#10B981', text: 'text-green-600', label: 'Low Risk', bg: 'bg-green-50' }
+  return               { ring: '#10B981', text: 'text-green-600',  label: 'Low Risk',      bg: 'bg-green-50'  }
 }
 
-// components defined OUTSIDE to prevent remount
-function Navbar({ navigate }) {
-  return (
-    <nav className="bg-primary text-white px-6 py-4 flex items-center
-                    justify-between shadow sticky top-0 z-20">
-      <div className="flex items-center gap-3">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          className="w-6 h-6">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
-        <span className="text-lg font-semibold tracking-wide">
-          Risk Assessment Engine
-        </span>
-      </div>
-      <div className="flex gap-4 text-sm">
-        <button onClick={() => navigate('/')}
-          className="hover:underline opacity-80 hover:opacity-100 transition">
-          Dashboard
-        </button>
-        <button onClick={() => navigate('/risks')}
-          className="hover:underline opacity-80 hover:opacity-100 transition">
-          Risks
-        </button>
-        <button onClick={() => navigate('/analytics')}
-          className="hover:underline opacity-80 hover:opacity-100 transition">
-          Analytics
-        </button>
-      </div>
-    </nav>
-  )
-}
-
+// sub-components
 function FieldRow({ label, children }) {
   return (
     <div className="grid grid-cols-3 gap-4 py-3
@@ -88,12 +56,12 @@ function FieldRow({ label, children }) {
 }
 
 function ScoreRing({ score }) {
-  const radius       = 40
-  const stroke       = 7
-  const norm         = radius - stroke / 2
+  const radius      = 40
+  const stroke      = 7
+  const norm        = radius - stroke / 2
   const circumference = 2 * Math.PI * norm
-  const offset       = circumference - (Math.min(score, 100) / 100) * circumference
-  const c            = scoreColour(score)
+  const offset      = circumference - (Math.min(score, 100) / 100) * circumference
+  const c           = scoreColour(score)
 
   return (
     <div className="relative flex items-center justify-center w-24 h-24">
@@ -108,8 +76,7 @@ function ScoreRing({ score }) {
           style={{ transition: 'stroke-dashoffset 0.8s ease' }}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center
-                      justify-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className={`text-xl font-bold leading-none ${c.text}`}>
           {score}
         </span>
@@ -125,8 +92,7 @@ function DeleteModal({ title, onConfirm, onCancel, loading }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center
                     bg-black bg-opacity-50 px-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm
-                      animate-in">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 bg-red-100 rounded-full flex items-center
                           justify-center shrink-0">
@@ -139,9 +105,7 @@ function DeleteModal({ title, onConfirm, onCancel, loading }) {
             </svg>
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 text-base">
-              Delete Risk
-            </h3>
+            <h3 className="font-bold text-gray-900 text-base">Delete Risk</h3>
             <p className="text-xs text-gray-500 mt-0.5">
               This action cannot be undone
             </p>
@@ -169,9 +133,9 @@ function DeleteModal({ title, onConfirm, onCancel, loading }) {
                 <svg className="animate-spin h-4 w-4" fill="none"
                   viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10"
-                    stroke="currentColor" strokeWidth="4"/>
+                    stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8z"/>
+                    d="M4 12a8 8 0 018-8v8z" />
                 </svg>
                 Deleting...
               </>
@@ -196,14 +160,14 @@ function LoadingSkeleton() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <div className="bg-primary h-16 shadow" />
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="animate-pulse space-y-6">
           <div className="h-4 bg-gray-200 rounded w-48" />
           <div className="h-8 bg-gray-200 rounded w-2/3" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
-              <div className="bg-white rounded-2xl border border-gray-200 p-6
-                              space-y-4">
+              <div className="bg-white rounded-2xl border border-gray-200
+                              p-6 space-y-4">
                 {Array.from({ length: 7 }).map((_, i) => (
                   <div key={i} className="h-8 bg-gray-100 rounded" />
                 ))}
@@ -261,16 +225,16 @@ export default function DetailPage() {
   const navigate = useNavigate()
   const { id }   = useParams()
 
-  const [risk, setRisk]                       = useState(null)
-  const [loading, setLoading]                 = useState(true)
-  const [error, setError]                     = useState(null)
+  const [risk,            setRisk]            = useState(null)
+  const [loading,         setLoading]         = useState(true)
+  const [error,           setError]           = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deleteLoading, setDeleteLoading]     = useState(false)
+  const [deleteLoading,   setDeleteLoading]   = useState(false)
 
   useEffect(() => {
     setLoading(true)
     getRiskById(id)
-      .then(res => setRisk(res.data))
+      .then(res  => setRisk(res.data))
       .catch(err => setError(
         err.response?.status === 404
           ? 'Risk not found. It may have been deleted.'
@@ -294,20 +258,23 @@ export default function DetailPage() {
   if (loading) return <LoadingSkeleton />
   if (error)   return <ErrorState message={error} navigate={navigate} />
 
-  const c           = scoreColour(risk.score ?? 0)
-  const isOverdue   = risk.dueDate && new Date(risk.dueDate) < new Date()
+  const c         = scoreColour(risk.score ?? 0)
+  const isOverdue = risk.dueDate && new Date(risk.dueDate) < new Date()
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
 
-      <Navbar navigate={navigate} />
+      {/* Navbar — no props needed */}
+      <Navbar />
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {/* ── Breadcrumb ── */}
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <button onClick={() => navigate('/risks')}
-            className="hover:text-primary transition">
+          <button
+            onClick={() => navigate('/risks')}
+            className="hover:text-primary transition"
+          >
             Risk Register
           </button>
           <svg className="w-3 h-3" fill="none" stroke="currentColor"
@@ -320,47 +287,44 @@ export default function DetailPage() {
           </span>
         </div>
 
-        {/* ── Page header ── */}
+        {/* ── Page header card ── */}
         <div className="bg-white rounded-2xl border border-gray-200
                         shadow-sm px-6 py-5 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start
                           sm:justify-between gap-4">
             <div className="flex-1 min-w-0">
 
-              {/* badges row */}
+              {/* badges */}
               <div className="flex flex-wrap gap-2 mb-3">
                 {risk.severity && (
-                  <span className={`px-3 py-1 rounded-full text-xs
-                                   font-semibold ${SEVERITY_STYLES[risk.severity]
-                                   ?? 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold
+                    ${SEVERITY_STYLES[risk.severity] ?? 'bg-gray-100 text-gray-600'}`}>
                     {risk.severity}
                   </span>
                 )}
                 {risk.status && (
-                  <span className={`px-3 py-1 rounded-full text-xs
-                                   font-semibold ${STATUS_STYLES[risk.status]
-                                   ?? 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold
+                    ${STATUS_STYLES[risk.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {risk.status}
                   </span>
                 )}
                 {risk.category && (
-                  <span className="px-3 py-1 rounded-full text-xs
-                                   font-semibold bg-purple-50 text-purple-700
-                                   border border-purple-200">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold
+                                   bg-purple-50 text-purple-700 border
+                                   border-purple-200">
                     {risk.category}
                   </span>
                 )}
                 {isOverdue && (
-                  <span className="px-3 py-1 rounded-full text-xs
-                                   font-semibold bg-red-100 text-red-700
-                                   border border-red-200 animate-pulse">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold
+                                   bg-red-100 text-red-700 border border-red-200
+                                   animate-pulse">
                     ⚠ Overdue
                   </span>
                 )}
               </div>
 
-              <h1 className="text-2xl font-bold text-gray-900 leading-tight
-                             mb-1">
+              <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-1">
                 {risk.title}
               </h1>
               <p className="text-xs text-gray-400">
@@ -374,7 +338,7 @@ export default function DetailPage() {
             </div>
 
             {/* action buttons */}
-            <div className="flex gap-2 shrink-0">
+            <div className="flex gap-2 shrink-0 flex-wrap">
               <button
                 onClick={() => navigate(`/risks/${id}/edit`)}
                 className="flex items-center gap-2 px-4 py-2 border
@@ -410,9 +374,10 @@ export default function DetailPage() {
         </div>
 
         {/* ── Main content grid ── */}
+        {/*  `flex gap-2 shrink-0 flex-wrap` — broken layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* ── Left: 2/3 width ── */}
+          {/* ── Left col: 2/3 width ── */}
           <div className="lg:col-span-2 space-y-6">
 
             {/* Risk Details card */}
@@ -447,10 +412,8 @@ export default function DetailPage() {
 
               <FieldRow label="Severity">
                 {risk.severity ? (
-                  <span className={`px-2.5 py-1 rounded-lg text-xs
-                                   font-semibold
-                    ${SEVERITY_STYLES[risk.severity]
-                      ?? 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold
+                    ${SEVERITY_STYLES[risk.severity] ?? 'bg-gray-100 text-gray-600'}`}>
                     {risk.severity}
                   </span>
                 ) : '—'}
@@ -458,10 +421,8 @@ export default function DetailPage() {
 
               <FieldRow label="Status">
                 {risk.status ? (
-                  <span className={`px-2.5 py-1 rounded-lg text-xs
-                                   font-semibold
-                    ${STATUS_STYLES[risk.status]
-                      ?? 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold
+                    ${STATUS_STYLES[risk.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {risk.status}
                   </span>
                 ) : '—'}
@@ -524,8 +485,8 @@ export default function DetailPage() {
                                 bg-gray-50 rounded-xl border border-dashed
                                 border-gray-200">
                   <div className="w-10 h-10 bg-gray-100 rounded-lg
-                                  flex items-center justify-center shrink-0
-                                  text-lg">
+                                  flex items-center justify-center
+                                  shrink-0 text-lg">
                     📋
                   </div>
                   <div>
@@ -548,7 +509,7 @@ export default function DetailPage() {
 
           </div>
 
-          {/* ── Right: 1/3 width ── */}
+          {/* ── Right col: 1/3 width ── */}
           <div className="space-y-6">
 
             {/* Score card */}
@@ -564,27 +525,23 @@ export default function DetailPage() {
                                  font-semibold ${c.bg} ${c.text}`}>
                   {c.label}
                 </div>
-                {/* mini score bar */}
                 <div className="w-full mt-4">
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all
-                                 duration-700"
+                      className="h-full rounded-full transition-all duration-700"
                       style={{
                         width: `${Math.min(risk.score ?? 0, 100)}%`,
                         backgroundColor: c.ring,
                       }}
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-gray-400
-                                  mt-1">
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
                     <span>0</span>
                     <span>50</span>
                     <span>100</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-3 text-center
-                              leading-relaxed">
+                <p className="text-xs text-gray-400 mt-3 text-center leading-relaxed">
                   0–39 Low · 40–74 Moderate · 75–100 Critical
                 </p>
               </div>
@@ -601,15 +558,15 @@ export default function DetailPage() {
                 {[
                   { label: 'Severity', value: risk.severity,
                     badge: SEVERITY_STYLES[risk.severity] },
-                  { label: 'Status', value: risk.status,
-                    badge: STATUS_STYLES[risk.status] },
+                  { label: 'Status',   value: risk.status,
+                    badge: STATUS_STYLES[risk.status]   },
                 ].map(({ label, value, badge }) => (
                   <div key={label}>
                     <p className="text-xs text-gray-400 mb-1">{label}</p>
                     {value ? (
                       <span className={`px-2.5 py-1 rounded-lg text-xs
-                                       font-semibold ${badge
-                                       ?? 'bg-gray-100 text-gray-600'}`}>
+                                       font-semibold
+                        ${badge ?? 'bg-gray-100 text-gray-600'}`}>
                         {value}
                       </span>
                     ) : (
@@ -618,9 +575,9 @@ export default function DetailPage() {
                   </div>
                 ))}
                 {[
-                  { label: 'Category', value: risk.category },
-                  { label: 'Owner',    value: risk.owner    },
-                  { label: 'Due Date', value: formatDate(risk.dueDate) },
+                  { label: 'Category', value: risk.category             },
+                  { label: 'Owner',    value: risk.owner                },
+                  { label: 'Due Date', value: formatDate(risk.dueDate)  },
                 ].map(({ label, value }) => (
                   <div key={label}>
                     <p className="text-xs text-gray-400 mb-0.5">{label}</p>
@@ -658,10 +615,9 @@ export default function DetailPage() {
 
                 <button
                   onClick={() => navigate('/risks/new')}
-                  className="w-full py-2.5 border border-gray-200
-                             text-gray-600 text-sm font-medium rounded-xl
-                             hover:bg-gray-50 transition flex items-center
-                             justify-center gap-2"
+                  className="w-full py-2.5 border border-gray-200 text-gray-600
+                             text-sm font-medium rounded-xl hover:bg-gray-50
+                             transition flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor"
                     strokeWidth="2" viewBox="0 0 24 24">
@@ -673,10 +629,9 @@ export default function DetailPage() {
 
                 <button
                   onClick={() => navigate('/risks')}
-                  className="w-full py-2.5 border border-gray-200
-                             text-gray-600 text-sm font-medium rounded-xl
-                             hover:bg-gray-50 transition flex items-center
-                             justify-center gap-2"
+                  className="w-full py-2.5 border border-gray-200 text-gray-600
+                             text-sm font-medium rounded-xl hover:bg-gray-50
+                             transition flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor"
                     strokeWidth="2" viewBox="0 0 24 24">
@@ -688,10 +643,9 @@ export default function DetailPage() {
 
                 <button
                   onClick={() => setShowDeleteModal(true)}
-                  className="w-full py-2.5 border border-red-200
-                             text-red-600 text-sm font-medium rounded-xl
-                             hover:bg-red-50 transition flex items-center
-                             justify-center gap-2"
+                  className="w-full py-2.5 border border-red-200 text-red-600
+                             text-sm font-medium rounded-xl hover:bg-red-50
+                             transition flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor"
                     strokeWidth="2" viewBox="0 0 24 24">

@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createRisk, getRiskById, updateRisk } from '../services/riskService'
+import Navbar from '../components/Navbar'
 
-// ── Field component OUTSIDE FormPage — prevents remount on every keystroke ──
+//  Field component OUTSIDE FormPage — prevents remount on every keystroke 
 function Field({ label, name, required, children, touched, errors }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-gray-700">
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
       {touched[name] && errors[name] && (
-        <p className="text-xs text-red-600 flex items-center gap-1">
+        <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
           <span>⚠</span> {errors[name]}
         </p>
       )}
@@ -20,7 +21,7 @@ function Field({ label, name, required, children, touched, errors }) {
   )
 }
 
-// ── field definitions ────────────────────────────────────────────────────────
+//  field definitions 
 const SEVERITY_OPTIONS = ['HIGH', 'MEDIUM', 'LOW']
 const STATUS_OPTIONS   = ['OPEN', 'MITIGATED', 'CLOSED']
 const CATEGORY_OPTIONS = [
@@ -28,7 +29,7 @@ const CATEGORY_OPTIONS = [
   'Compliance', 'Reputational', 'Technical', 'Other',
 ]
 
-// ── empty form state ─────────────────────────────────────────────────────────
+//  empty form state 
 const EMPTY_FORM = {
   title:          '',
   description:    '',
@@ -41,7 +42,7 @@ const EMPTY_FORM = {
   dueDate:        '',
 }
 
-// ── validation ───────────────────────────────────────────────────────────────
+//  validation function 
 function validate(form) {
   const errors = {}
 
@@ -94,7 +95,7 @@ export default function FormPage() {
   const [submitError, setSubmitError] = useState(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
-  // ── load existing record when editing ────────────────────────────────────
+  //  load existing record when editing 
   useEffect(() => {
     if (!isEdit) return
     setFetching(true)
@@ -117,7 +118,7 @@ export default function FormPage() {
       .finally(() => setFetching(false))
   }, [id, isEdit])
 
-  // ── change handler ────────────────────────────────────────────────────────
+  //  change handler 
   function handleChange(e) {
     const { name, value } = e.target
     const updated = { ...form, [name]: value }
@@ -128,7 +129,7 @@ export default function FormPage() {
     }
   }
 
-  // ── blur handler ──────────────────────────────────────────────────────────
+  //  blur handler 
   function handleBlur(e) {
     const { name } = e.target
     setTouched(prev => ({ ...prev, [name]: true }))
@@ -136,7 +137,7 @@ export default function FormPage() {
     setErrors(prev => ({ ...prev, [name]: newErrors[name] ?? undefined }))
   }
 
-  // ── submit handler ────────────────────────────────────────────────────────
+  //  submit handler 
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -183,31 +184,34 @@ export default function FormPage() {
     }
   }
 
-  // ── score colour ──────────────────────────────────────────────────────────
+  //  score colour 
   function scoreColour(v) {
     if (v >= 75) return 'text-red-600'
     if (v >= 40) return 'text-yellow-600'
     return 'text-green-600'
   }
 
-  // ── input className ───────────────────────────────────────────────────────
+  //  input className 
   function inputClass(name) {
-    const base = `w-full px-3 py-2 border rounded text-sm
+    const base = `w-full px-3 py-2 border rounded-lg text-sm
                   focus:outline-none focus:ring-2 focus:ring-primary transition`
     const err  = touched[name] && errors[name]
     return `${base} ${err
       ? 'border-red-400 bg-red-50 focus:ring-red-400'
-      : 'border-gray-300 bg-white'}`
+      : 'border-gray-300 bg-white focus:border-primary'}`
   }
 
-  // ── fetching skeleton ─────────────────────────────────────────────────────
+  //  fetching skeleton 
   if (fetching) {
     return (
-      <div className="min-h-screen bg-gray-50 font-sans flex items-center justify-center">
-        <div className="animate-pulse space-y-4 w-full max-w-2xl px-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-10 bg-gray-200 rounded" />
-          ))}
+      <div className="min-h-screen bg-gray-50 font-sans">
+        <Navbar />
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-pulse space-y-4 w-full max-w-2xl px-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-10 bg-gray-200 rounded" />
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -218,27 +222,16 @@ export default function FormPage() {
     <div className="min-h-screen bg-gray-50 font-sans">
 
       {/* ── Navbar ── */}
-      <nav className="bg-primary text-white px-6 py-4 flex items-center
-                      justify-between shadow">
-        <h1 className="text-lg font-medium tracking-wide">
-          Risk Assessment Engine
-        </h1>
-        <div className="flex gap-4 text-sm">
-          <button onClick={() => navigate('/')}
-            className="hover:underline">Dashboard</button>
-          <button onClick={() => navigate('/risks')}
-            className="hover:underline">Risks</button>
-          <button onClick={() => navigate('/analytics')}
-            className="hover:underline">Analytics</button>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-3xl mx-auto px-6 py-8">
 
         {/* ── Breadcrumb ── */}
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <button onClick={() => navigate('/risks')}
-            className="hover:text-primary hover:underline">
+          <button
+            onClick={() => navigate('/risks')}
+            className="hover:text-primary hover:underline transition"
+          >
             Risk Register
           </button>
           <span>/</span>
@@ -248,11 +241,11 @@ export default function FormPage() {
         </div>
 
         {/* ── Form card ── */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
 
           {/* heading */}
           <div className="mb-8">
-            <h2 className="text-2xl font-medium text-gray-800">
+            <h2 className="text-2xl font-bold text-gray-800">
               {isEdit ? 'Edit Risk' : 'Create New Risk'}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -265,7 +258,7 @@ export default function FormPage() {
           {/* success banner */}
           {submitSuccess && (
             <div className="mb-6 px-4 py-3 bg-green-50 border border-green-200
-                            text-green-700 rounded text-sm flex items-center gap-2">
+                            text-green-700 rounded-xl text-sm flex items-center gap-2">
               <span>✓</span>
               <span>
                 Risk {isEdit ? 'updated' : 'created'} successfully! Redirecting...
@@ -276,14 +269,14 @@ export default function FormPage() {
           {/* error banner */}
           {submitError && (
             <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200
-                            text-red-700 rounded text-sm flex items-center gap-2">
+                            text-red-700 rounded-xl text-sm flex items-center gap-2">
               <span>⚠</span>
               <span>{submitError}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} noValidate>
-            <div className="space-y-6">
+            <div className="space-y-8">
 
               {/* ── Section 1: Basic Info ── */}
               <div>
@@ -305,7 +298,7 @@ export default function FormPage() {
                       maxLength={200}
                       className={inputClass('title')}
                     />
-                    <p className="text-xs text-gray-400 text-right">
+                    <p className="text-xs text-gray-400 text-right mt-0.5">
                       {form.title.length}/200
                     </p>
                   </Field>
@@ -415,7 +408,7 @@ export default function FormPage() {
                       )}
                     </div>
                     {form.score !== '' && !isNaN(form.score) && (
-                      <div className="h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                      <div className="h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-300
                             ${Number(form.score) >= 75 ? 'bg-red-500'
@@ -483,7 +476,7 @@ export default function FormPage() {
               {Object.keys(errors).filter(k => errors[k]).length > 0 &&
                Object.keys(touched).length > 0 && (
                 <div className="px-4 py-3 bg-red-50 border border-red-200
-                                text-red-700 rounded text-sm">
+                                text-red-700 rounded-xl text-sm">
                   Please fix {Object.keys(errors).filter(k => errors[k]).length} error
                   {Object.keys(errors).filter(k => errors[k]).length > 1 ? 's' : ''} before submitting.
                 </div>
@@ -496,7 +489,7 @@ export default function FormPage() {
                   type="submit"
                   disabled={loading || submitSuccess}
                   className="flex-1 sm:flex-none px-8 py-2.5 bg-primary text-white
-                             text-sm font-medium rounded hover:opacity-90
+                             text-sm font-medium rounded-xl hover:opacity-90
                              disabled:opacity-50 disabled:cursor-not-allowed
                              transition flex items-center justify-center gap-2"
                 >
@@ -519,7 +512,7 @@ export default function FormPage() {
                   onClick={() => navigate('/risks')}
                   disabled={loading}
                   className="flex-1 sm:flex-none px-8 py-2.5 border border-gray-300
-                             text-gray-700 text-sm rounded hover:bg-gray-50
+                             text-gray-700 text-sm rounded-xl hover:bg-gray-50
                              disabled:opacity-50 transition"
                 >
                   Cancel

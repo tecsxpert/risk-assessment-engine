@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { registerUser } from '../services/authService'
 
-// icons — defined OUTSIDE to prevent remount 
+//  icons — defined OUTSIDE to prevent remount 
 const ShieldIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -39,33 +39,33 @@ const EyeIcon = ({ open }) => open ? (
   </svg>
 )
 
-//  validation — defined OUTSIDE 
+//  validation function — defined OUTSIDE 
 function validate({ username, email, password, confirmPassword }) {
   const errors = {}
 
   if (!username.trim())
-    errors.username = 'Username is required'
+    errors.username = 'Username is required.'
   else if (username.trim().length < 3)
-    errors.username = 'At least 3 characters required'
+    errors.username = 'At least 3 characters required.'
   else if (username.trim().length > 50)
-    errors.username = 'Maximum 50 characters'
+    errors.username = 'Maximum 50 characters.'
 
   if (!email.trim())
-    errors.email = 'Email is required'
+    errors.email = 'Email is required.'
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    errors.email = 'Enter a valid email address'
+    errors.email = 'Enter a valid email address.'
 
   if (!password)
-    errors.password = 'Password is required'
+    errors.password = 'Password is required.'
   else if (password.length < 6)
-    errors.password = 'At least 6 characters required'
+    errors.password = 'At least 6 characters required.'
   else if (password.length > 100)
-    errors.password = 'Maximum 100 characters'
+    errors.password = 'Maximum 100 characters.'
 
   if (!confirmPassword)
-    errors.confirmPassword = 'Please confirm your password'
+    errors.confirmPassword = 'Please confirm your password.'
   else if (password !== confirmPassword)
-    errors.confirmPassword = 'Passwords do not match'
+    errors.confirmPassword = 'Passwords do not match.'
 
   return errors
 }
@@ -73,12 +73,11 @@ function validate({ username, email, password, confirmPassword }) {
 //  input field — defined OUTSIDE to prevent focus loss 
 function InputField({
   label, name, type, value, onChange, onBlur,
-  placeholder, error, touched, disabled,
-  rightElement,
+  placeholder, error, touched, disabled, rightElement,
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-semibold text-slate-700">
+      <label className="text-sm font-medium text-gray-700">
         {label}
         <span className="text-red-500 ml-0.5">*</span>
       </label>
@@ -92,22 +91,22 @@ function InputField({
           placeholder={placeholder}
           disabled={disabled}
           autoComplete={
-            name === 'email'           ? 'email'
-            : name === 'username'      ? 'username'
-            : name === 'password'      ? 'new-password'
+            name === 'email'             ? 'email'
+            : name === 'username'        ? 'username'
+            : name === 'password'        ? 'new-password'
             : name === 'confirmPassword' ? 'new-password'
             : 'off'
           }
-          className={`w-full px-4 py-3 rounded-xl border text-sm
-                      text-slate-900 placeholder-slate-400 outline-none
-                      transition-all duration-150
-                      focus:ring-2 focus:border-transparent
+          className={`w-full px-3 py-2.5 border rounded-xl text-sm
+                      text-gray-800 placeholder-gray-400
+                      focus:outline-none focus:ring-2 focus:border-primary
+                      transition
                       disabled:opacity-60 disabled:cursor-not-allowed
-                      ${rightElement ? 'pr-11' : ''}
+                      ${rightElement ? 'pr-10' : ''}
                       ${touched && error
                         ? 'border-red-400 bg-red-50 focus:ring-red-400'
-                        : 'border-slate-300 bg-white hover:border-slate-400'
-                          + ' focus:ring-blue-500'}`}
+                        : 'border-gray-300 bg-white hover:border-gray-400'
+                          + ' focus:ring-primary'}`}
         />
         {rightElement && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -155,10 +154,7 @@ export default function RegisterPage() {
     if (apiError) setApiError('')
     if (touched[name]) {
       const newErrors = validate(updated)
-      setErrors(prev => ({
-        ...prev,
-        [name]: newErrors[name] ?? undefined,
-      }))
+      setErrors(prev => ({ ...prev, [name]: newErrors[name] ?? undefined }))
     }
   }
 
@@ -166,16 +162,12 @@ export default function RegisterPage() {
     const { name } = e.target
     setTouched(prev => ({ ...prev, [name]: true }))
     const newErrors = validate(form)
-    setErrors(prev => ({
-      ...prev,
-      [name]: newErrors[name] ?? undefined,
-    }))
+    setErrors(prev => ({ ...prev, [name]: newErrors[name] ?? undefined }))
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
 
-    // mark all fields touched
     setTouched({
       username: true, email: true,
       password: true, confirmPassword: true,
@@ -218,15 +210,12 @@ export default function RegisterPage() {
 
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen flex"
-      style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div className="min-h-screen flex font-sans">
 
       {/* ── Left panel — branding ── */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between
-                   p-12 relative overflow-hidden"
-        style={{ backgroundColor: '#1B4F8A' }}
-      >
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between
+                      p-12 relative overflow-hidden bg-primary">
+
         {/* background circles */}
         <div className="absolute inset-0 opacity-10">
           {[...Array(6)].map((_, i) => (
@@ -250,9 +239,9 @@ export default function RegisterPage() {
           </div>
           <div>
             <p className="text-white font-bold text-lg leading-none">
-              RiskGuard
+              Risk Assessment Engine
             </p>
-            <p className="text-blue-200 text-xs">Assessment Engine</p>
+            <p className="text-blue-200 text-xs">Powered by RAE</p>
           </div>
         </div>
 
@@ -266,10 +255,9 @@ export default function RegisterPage() {
           <h1 className="text-4xl font-bold text-white leading-tight mb-4">
             Join the<br />platform.
           </h1>
-          <p className="text-blue-200 text-base max-w-xs mx-auto
-                        leading-relaxed">
+          <p className="text-blue-200 text-base max-w-xs mx-auto leading-relaxed">
             Create your account and start managing risks with
-            AI-powered intelligence.
+            confidence and clarity.
           </p>
         </div>
 
@@ -291,30 +279,29 @@ export default function RegisterPage() {
 
       {/* ── Right panel — form ── */}
       <div className="flex-1 flex items-center justify-center
-                      bg-slate-50 p-6 overflow-y-auto">
+                      bg-gray-50 p-6 overflow-y-auto">
         <div className="w-full max-w-md py-8">
 
           {/* mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-9 h-9 rounded-xl flex items-center
-                            justify-center text-white"
-              style={{ backgroundColor: '#1B4F8A' }}>
+            <div className="w-9 h-9 bg-primary rounded-xl flex items-center
+                            justify-center text-white">
               <ShieldIcon />
             </div>
-            <span className="font-bold text-slate-800 text-lg">
-              RiskGuard
+            <span className="font-bold text-gray-800 text-lg">
+              Risk Assessment Engine
             </span>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm
-                          border border-slate-200 p-8">
+                          border border-gray-200 p-8">
 
             {/* heading */}
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-2xl font-bold text-gray-800">
                 Create account
               </h2>
-              <p className="text-slate-500 text-sm mt-1">
+              <p className="text-gray-500 text-sm mt-1">
                 Fill in your details to get started
               </p>
             </div>
@@ -331,9 +318,7 @@ export default function RegisterPage() {
                 </svg>
                 <div>
                   <p className="font-semibold">Account created successfully!</p>
-                  <p className="text-xs mt-0.5">
-                    Redirecting to login page...
-                  </p>
+                  <p className="text-xs mt-0.5">Redirecting to login page...</p>
                 </div>
               </div>
             )}
@@ -343,20 +328,14 @@ export default function RegisterPage() {
               <div className="mb-5 flex items-start gap-3 bg-red-50
                               border border-red-200 text-red-700
                               rounded-xl px-4 py-3 text-sm">
-                <svg className="w-4 h-4 mt-0.5 shrink-0"
-                  viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10
-                    10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                </svg>
+                <span className="mt-0.5">⚠</span>
                 <span>{apiError}</span>
               </div>
             )}
 
             {/* form */}
-            <form onSubmit={handleSubmit} noValidate
-              className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
-              {/* Username */}
               <InputField
                 label="Username"
                 name="username"
@@ -370,7 +349,6 @@ export default function RegisterPage() {
                 disabled={loading || success}
               />
 
-              {/* Email */}
               <InputField
                 label="Email Address"
                 name="email"
@@ -384,7 +362,6 @@ export default function RegisterPage() {
                 disabled={loading || success}
               />
 
-              {/* Password */}
               <InputField
                 label="Password"
                 name="password"
@@ -401,17 +378,14 @@ export default function RegisterPage() {
                     type="button"
                     tabIndex={-1}
                     onClick={() => setShowPassword(v => !v)}
-                    className="text-slate-400 hover:text-slate-600
-                               transition-colors"
-                    aria-label={showPassword
-                      ? 'Hide password' : 'Show password'}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     <EyeIcon open={showPassword} />
                   </button>
                 }
               />
 
-              {/* Confirm Password */}
               <InputField
                 label="Confirm Password"
                 name="confirmPassword"
@@ -428,10 +402,8 @@ export default function RegisterPage() {
                     type="button"
                     tabIndex={-1}
                     onClick={() => setShowConfirmPassword(v => !v)}
-                    className="text-slate-400 hover:text-slate-600
-                               transition-colors"
-                    aria-label={showConfirmPassword
-                      ? 'Hide password' : 'Show password'}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
                     <EyeIcon open={showConfirmPassword} />
                   </button>
@@ -441,18 +413,15 @@ export default function RegisterPage() {
               {/* role info */}
               <div className="flex items-center gap-3 px-4 py-3
                               bg-blue-50 border border-blue-100
-                              rounded-xl text-xs text-blue-700">
+                              rounded-xl text-xs text-primary">
                 <svg className="w-4 h-4 shrink-0" fill="none"
-                  stroke="currentColor" strokeWidth="2"
-                  viewBox="0 0 24 24">
+                  stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18
-                       0 9 9 0 0118 0z" />
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>
-                  New accounts are created with{' '}
-                  <strong>VIEWER</strong> role by default.
-                  An admin can upgrade your role after registration.
+                  New accounts are created with <strong>VIEWER</strong> role
+                  by default. An admin can upgrade your role after registration.
                 </span>
               </div>
 
@@ -460,15 +429,12 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading || success}
-                className="w-full py-3 px-4 rounded-xl text-white
-                           text-sm font-semibold flex items-center
-                           justify-center gap-2 transition-all duration-150
-                           active:scale-[0.98] disabled:opacity-70
-                           disabled:cursor-not-allowed disabled:scale-100
-                           hover:brightness-110 focus:outline-none
-                           focus:ring-2 focus:ring-offset-2
-                           focus:ring-blue-500 mt-2"
-                style={{ backgroundColor: '#1B4F8A' }}
+                className="w-full py-2.5 bg-primary text-white text-sm
+                           font-medium rounded-xl hover:opacity-90
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           transition flex items-center justify-center gap-2
+                           mt-2 focus:outline-none focus:ring-2
+                           focus:ring-primary focus:ring-offset-2"
               >
                 {loading ? (
                   <>
@@ -485,14 +451,12 @@ export default function RegisterPage() {
             </form>
 
             {/* link to login */}
-            <div className="mt-6 pt-6 border-t border-slate-100
-                            text-center">
-              <p className="text-sm text-slate-500">
+            <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+              <p className="text-sm text-gray-500">
                 Already have an account?{' '}
                 <Link
                   to="/login"
-                  className="font-semibold hover:underline"
-                  style={{ color: '#1B4F8A' }}
+                  className="font-semibold text-primary hover:underline"
                 >
                   Sign In
                 </Link>
@@ -502,8 +466,8 @@ export default function RegisterPage() {
           </div>
 
           {/* footer */}
-          <p className="text-center text-xs text-slate-400 mt-6">
-            Risk Assessment Engine 
+          <p className="text-center text-xs text-gray-400 mt-6">
+            Risk Assessment Engine
           </p>
 
         </div>

@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getRiskStats, getAllRisks, exportRisksCSV } from '../services/riskService'
 import ReportStreamer from '../components/ReportStreamer'
+import Navbar from '../components/Navbar'   
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie, Legend,
   AreaChart, Area,
 } from 'recharts'
 
-// colour palettes 
+// colour palettes
 const CATEGORY_COLOURS = [
   '#1B4F8A', '#2E86C1', '#1ABC9C',
   '#F39C12', '#E74C3C', '#8E44AD', '#27AE60',
@@ -27,7 +28,7 @@ const SEVERITY_COLOURS = {
   LOW:    '#10B981',
 }
 
-// mock data — used when backend is not running 
+// mock data
 const MOCK_STATS = {
   totalRisks:   30,
   highSeverity:  8,
@@ -55,15 +56,15 @@ const MOCK_STATS = {
 }
 
 const MOCK_MONTHLY = [
-  { month: 'Nov 24', count: 2  },
-  { month: 'Dec 24', count: 4  },
-  { month: 'Jan 25', count: 5  },
-  { month: 'Feb 25', count: 7  },
-  { month: 'Mar 25', count: 6  },
-  { month: 'Apr 25', count: 6  },
+  { month: 'Nov 24', count: 2 },
+  { month: 'Dec 24', count: 4 },
+  { month: 'Jan 25', count: 5 },
+  { month: 'Feb 25', count: 7 },
+  { month: 'Mar 25', count: 6 },
+  { month: 'Apr 25', count: 6 },
 ]
 
-//  helpers 
+// helpers
 function buildMonthlyData(risks) {
   if (!risks?.length) return []
   const map = {}
@@ -96,45 +97,7 @@ function buildPieData(arr) {
   }))
 }
 
-//  sub-components defined OUTSIDE to prevent remount 
-
-function Navbar({ navigate, onLogout }) {
-  return (
-    <nav className="bg-primary text-white px-6 py-4 flex items-center
-                    justify-between shadow sticky top-0 z-20">
-      <div className="flex items-center gap-3">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          className="w-6 h-6">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
-        <span className="text-lg font-semibold tracking-wide">
-          Risk Assessment Engine
-        </span>
-      </div>
-      <div className="flex gap-4 text-sm items-center">
-        <button onClick={() => navigate('/')}
-          className="opacity-80 hover:opacity-100 hover:underline transition">
-          Dashboard
-        </button>
-        <button onClick={() => navigate('/risks')}
-          className="opacity-80 hover:opacity-100 hover:underline transition">
-          Risks
-        </button>
-        <button onClick={() => navigate('/analytics')}
-          className="underline font-semibold">
-          Analytics
-        </button>
-        <button onClick={onLogout}
-          className="ml-2 px-3 py-1 border border-blue-300 rounded-lg
-                     text-xs hover:bg-white hover:text-primary transition">
-          Logout
-        </button>
-      </div>
-    </nav>
-  )
-}
-
+// sub-components
 function KpiCard({ label, value, icon, textColour, bgColour, loading, trend }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
@@ -184,12 +147,12 @@ function ChartCard({ title, subtitle, children, loading, action, height = 280 })
         {action && <div className="shrink-0">{action}</div>}
       </div>
       {loading ? (
-        <div className={`bg-gray-50 rounded-xl animate-pulse flex items-center
-                         justify-center`}
+        <div className="bg-gray-50 rounded-xl animate-pulse flex items-center
+                        justify-center"
           style={{ height }}>
           <div className="text-center">
             <div className="flex gap-1 justify-center mb-2">
-              {[0,1,2].map(i => (
+              {[0, 1, 2].map(i => (
                 <div key={i}
                   className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"
                   style={{ animationDelay: `${i * 0.15}s` }} />
@@ -199,9 +162,7 @@ function ChartCard({ title, subtitle, children, loading, action, height = 280 })
           </div>
         </div>
       ) : (
-        <div style={{ height }}>
-          {children}
-        </div>
+        <div style={{ height }}>{children}</div>
       )}
     </div>
   )
@@ -218,8 +179,7 @@ function PeriodSelector({ value, onChange }) {
         <button
           key={key}
           onClick={() => onChange(key)}
-          className={`px-3 py-1.5 text-xs font-semibold rounded-lg
-                      transition
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition
                       ${value === key
                         ? 'bg-white text-primary shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'}`}
@@ -297,7 +257,7 @@ function EmptyChart({ message = 'No data available' }) {
 }
 
 function StatusProgressRow({ item, total }) {
-  const pct = total ? Math.round((item.count / total) * 100) : 0
+  const pct    = total ? Math.round((item.count / total) * 100) : 0
   const colour = STATUS_COLOURS[item.name] ?? '#1B4F8A'
   return (
     <div>
@@ -328,20 +288,19 @@ function StatusProgressRow({ item, total }) {
   )
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+//  main component 
 export default function AnalyticsPage() {
-  const navigate         = useNavigate()
-  const { logout }       = useAuth()
+  const navigate   = useNavigate()
+  const { logout } = useAuth()
 
-  const [stats, setStats]           = useState(null)
-  const [allRisks, setAllRisks]     = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [usingMock, setUsingMock]   = useState(false)
-  const [period, setPeriod]         = useState('6m')
-  const [exporting, setExporting]   = useState(false)
-  const [chartView, setChartView]   = useState('category')
+  const [stats,     setStats]     = useState(null)
+  const [allRisks,  setAllRisks]  = useState([])
+  const [loading,   setLoading]   = useState(true)
+  const [usingMock, setUsingMock] = useState(false)
+  const [period,    setPeriod]    = useState('6m')
+  const [exporting, setExporting] = useState(false)
+  const [chartView, setChartView] = useState('category')
 
-  //  fetch 
   const fetchData = useCallback(async () => {
     setLoading(true)
     const [statsRes, risksRes] = await Promise.allSettled([
@@ -358,7 +317,7 @@ export default function AnalyticsPage() {
     }
 
     if (risksRes.status === 'fulfilled') {
-      const raw = risksRes.value.data
+      const raw  = risksRes.value.data
       const list = raw?.content ?? (Array.isArray(raw) ? raw : [])
       setAllRisks(list)
     } else {
@@ -370,14 +329,13 @@ export default function AnalyticsPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  //  CSV export 
   async function handleExport() {
     setExporting(true)
     try {
-      const res = await exportRisksCSV()
-      const url = window.URL.createObjectURL(new Blob([res.data]))
-      const a   = document.createElement('a')
-      a.href    = url
+      const res  = await exportRisksCSV()
+      const url  = window.URL.createObjectURL(new Blob([res.data]))
+      const a    = document.createElement('a')
+      a.href     = url
       a.download = `risks-${new Date().toISOString().split('T')[0]}.csv`
       a.click()
       window.URL.revokeObjectURL(url)
@@ -388,25 +346,22 @@ export default function AnalyticsPage() {
     }
   }
 
-  // derived chart data 
   const allMonthly = usingMock
     ? MOCK_MONTHLY
     : buildMonthlyData(allRisks)
 
-  const filteredMonthly = period === '3m'
-    ? allMonthly.slice(-3)
-    : period === '6m'
-    ? allMonthly.slice(-6)
-    : allMonthly
+  const filteredMonthly =
+    period === '3m'  ? allMonthly.slice(-3) :
+    period === '6m'  ? allMonthly.slice(-6) :
+                       allMonthly
 
   const pieStatusData   = buildPieData(stats?.byStatus   ?? [])
   const pieSeverityData = buildPieData(stats?.bySeverity ?? [])
 
-  const barData = chartView === 'severity'
-    ? stats?.bySeverity ?? []
-    : chartView === 'status'
-    ? stats?.byStatus   ?? []
-    : stats?.byCategory ?? []
+  const barData =
+    chartView === 'severity' ? stats?.bySeverity ?? [] :
+    chartView === 'status'   ? stats?.byStatus   ?? [] :
+                               stats?.byCategory ?? []
 
   const getBarColour = (entry, index) => {
     if (chartView === 'severity') return SEVERITY_COLOURS[entry.name] ?? '#1B4F8A'
@@ -416,11 +371,11 @@ export default function AnalyticsPage() {
 
   const totalRisks = stats?.totalRisks ?? 0
 
-  // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
 
-      <Navbar navigate={navigate} onLogout={logout} />
+      {/*Navbar — no props needed, uses useNavigate + useAuth internally */}
+      <Navbar />
 
       <div className="max-w-screen-xl mx-auto px-6 py-8">
 
@@ -454,18 +409,18 @@ export default function AnalyticsPage() {
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="px-4 py-2.5 bg-primary text-white text-sm
-                         font-medium rounded-xl hover:opacity-90
-                         disabled:opacity-50 transition flex items-center gap-2"
+              className="px-4 py-2.5 bg-primary text-white text-sm font-medium
+                         rounded-xl hover:opacity-90 disabled:opacity-50
+                         transition flex items-center gap-2"
             >
               {exporting ? (
                 <>
                   <svg className="animate-spin h-4 w-4" fill="none"
                     viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10"
-                      stroke="currentColor" strokeWidth="4"/>
+                      stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"/>
+                      d="M4 12a8 8 0 018-8v8z" />
                   </svg>
                   Exporting...
                 </>
@@ -484,7 +439,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* mock data warning */}
+        {/* ── Mock warning ── */}
         {usingMock && (
           <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200
                           text-amber-800 rounded-xl text-sm flex items-center
@@ -506,45 +461,22 @@ export default function AnalyticsPage() {
 
         {/* ── KPI cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <KpiCard
-            label="Total Risks"
-            value={stats?.totalRisks}
-            icon="📋"
-            textColour="text-primary"
-            bgColour="bg-blue-50"
-            loading={loading}
-          />
-          <KpiCard
-            label="High Severity"
-            value={stats?.highSeverity}
-            icon="🔴"
-            textColour="text-red-600"
-            bgColour="bg-red-50"
-            loading={loading}
-            trend={stats?.highSeverity}
-          />
-          <KpiCard
-            label="Open Risks"
-            value={stats?.openRisks}
-            icon="⚠️"
-            textColour="text-yellow-600"
-            bgColour="bg-yellow-50"
-            loading={loading}
-          />
-          <KpiCard
-            label="Mitigated"
-            value={stats?.mitigated}
-            icon="✅"
-            textColour="text-green-600"
-            bgColour="bg-green-50"
-            loading={loading}
-          />
+          <KpiCard label="Total Risks"   value={stats?.totalRisks}
+            icon="📋" textColour="text-primary"    bgColour="bg-blue-50"
+            loading={loading} />
+          <KpiCard label="High Severity" value={stats?.highSeverity}
+            icon="🔴" textColour="text-red-600"    bgColour="bg-red-50"
+            loading={loading} trend={stats?.highSeverity} />
+          <KpiCard label="Open Risks"    value={stats?.openRisks}
+            icon="⚠️" textColour="text-yellow-600" bgColour="bg-yellow-50"
+            loading={loading} />
+          <KpiCard label="Mitigated"     value={stats?.mitigated}
+            icon="✅" textColour="text-green-600"  bgColour="bg-green-50"
+            loading={loading} />
         </div>
 
-        {/* ── Row 1: Main BarChart (2/3) + Status breakdown (1/3) ── */}
+        {/* ── Row 1: BarChart + Status breakdown ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-
-          {/* BarChart with view toggle */}
           <div className="lg:col-span-2">
             <ChartCard
               title="Risk Distribution"
@@ -573,11 +505,9 @@ export default function AnalyticsPage() {
             >
               {barData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={barData}
+                  <BarChart data={barData}
                     margin={{ top: 5, right: 10, left: -15, bottom: 5 }}
-                    barSize={40}
-                  >
+                    barSize={40}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"
                       vertical={false} />
                     <XAxis dataKey="name"
@@ -587,22 +517,17 @@ export default function AnalyticsPage() {
                       axisLine={false} tickLine={false}
                       allowDecimals={false} />
                     <Tooltip content={<CustomBarTooltip />} />
-                    <Bar dataKey="count" name="Risks"
-                      radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="count" name="Risks" radius={[6, 6, 0, 0]}>
                       {barData.map((entry, index) => (
-                        <Cell key={index}
-                          fill={getBarColour(entry, index)} />
+                        <Cell key={index} fill={getBarColour(entry, index)} />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              ) : (
-                <EmptyChart />
-              )}
+              ) : <EmptyChart />}
             </ChartCard>
           </div>
 
-          {/* Status progress bars */}
           <div className="bg-white rounded-2xl border border-gray-200
                           shadow-sm p-6">
             <h3 className="text-sm font-semibold text-gray-800 mb-1">
@@ -611,10 +536,9 @@ export default function AnalyticsPage() {
             <p className="text-xs text-gray-400 mb-5">
               Progress toward risk resolution
             </p>
-
             {loading ? (
               <div className="space-y-4">
-                {[1,2,3].map(i => (
+                {[1, 2, 3].map(i => (
                   <div key={i} className="space-y-1.5">
                     <div className="h-4 bg-gray-100 rounded animate-pulse" />
                     <div className="h-2 bg-gray-100 rounded animate-pulse" />
@@ -632,17 +556,11 @@ export default function AnalyticsPage() {
                 ))}
               </div>
             )}
-
-            {/* resolution rate */}
             {!loading && totalRisks > 0 && (
               <div className="mt-6 pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-400 mb-1">
-                  Resolution Rate
-                </p>
+                <p className="text-xs text-gray-400 mb-1">Resolution Rate</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {Math.round(
-                    ((stats?.mitigated ?? 0) / totalRisks) * 100
-                  )}%
+                  {Math.round(((stats?.mitigated ?? 0) / totalRisks) * 100)}%
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   of risks mitigated or closed
@@ -652,10 +570,8 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* ── Row 2: AreaChart LineChart over 6 months ── */}
+        {/* ── Row 2: AreaChart + Pie by status ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-
-          {/* Area LineChart — risks over time */}
           <ChartCard
             title="Risks Over Time"
             subtitle="New risks registered per month"
@@ -665,17 +581,12 @@ export default function AnalyticsPage() {
           >
             {filteredMonthly.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={filteredMonthly}
-                  margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
-                >
+                <AreaChart data={filteredMonthly}
+                  margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
                   <defs>
-                    <linearGradient id="lineGrad" x1="0" y1="0"
-                      x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#1B4F8A"
-                        stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#1B4F8A"
-                        stopOpacity={0} />
+                    <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#1B4F8A" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#1B4F8A" stopOpacity={0}   />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"
@@ -684,28 +595,18 @@ export default function AnalyticsPage() {
                     tick={{ fontSize: 11, fill: '#9ca3af' }}
                     axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }}
-                    axisLine={false} tickLine={false}
-                    allowDecimals={false} />
+                    axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip content={<CustomLineTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="count"
-                    name="New Risks"
-                    stroke="#1B4F8A"
-                    strokeWidth={2.5}
+                  <Area type="monotone" dataKey="count" name="New Risks"
+                    stroke="#1B4F8A" strokeWidth={2.5}
                     fill="url(#lineGrad)"
-                    dot={{ fill: '#1B4F8A', r: 4, strokeWidth: 2,
-                           stroke: '#fff' }}
-                    activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
-                  />
+                    dot={{ fill: '#1B4F8A', r: 4, strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }} />
                 </AreaChart>
               </ResponsiveContainer>
-            ) : (
-              <EmptyChart message="No monthly data available" />
-            )}
+            ) : <EmptyChart message="No monthly data available" />}
           </ChartCard>
 
-          {/* PieChart by status */}
           <ChartCard
             title="Status Distribution"
             subtitle="Risk counts by current status"
@@ -715,40 +616,26 @@ export default function AnalyticsPage() {
             {pieStatusData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={pieStatusData}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={4}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
+                  <Pie data={pieStatusData} cx="50%" cy="45%"
+                    innerRadius={60} outerRadius={90}
+                    paddingAngle={4} dataKey="value" strokeWidth={0}>
                     {pieStatusData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomPieTooltip />} />
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
+                  <Legend iconType="circle" iconSize={8}
                     formatter={v => (
-                      <span style={{ fontSize: 11, color: '#6b7280' }}>
-                        {v}
-                      </span>
-                    )}
-                  />
+                      <span style={{ fontSize: 11, color: '#6b7280' }}>{v}</span>
+                    )} />
                 </PieChart>
               </ResponsiveContainer>
             ) : <EmptyChart />}
           </ChartCard>
         </div>
 
-        {/* ── Row 3: PieChart severity + Severity BarChart ── */}
+        {/* ── Row 3: Pie by severity + Severity summary ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-
-          {/* PieChart by severity */}
           <ChartCard
             title="Severity Distribution"
             subtitle="HIGH · MEDIUM · LOW breakdown"
@@ -758,36 +645,23 @@ export default function AnalyticsPage() {
             {pieSeverityData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={pieSeverityData}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={4}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
+                  <Pie data={pieSeverityData} cx="50%" cy="45%"
+                    innerRadius={60} outerRadius={90}
+                    paddingAngle={4} dataKey="value" strokeWidth={0}>
                     {pieSeverityData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomPieTooltip />} />
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
+                  <Legend iconType="circle" iconSize={8}
                     formatter={v => (
-                      <span style={{ fontSize: 11, color: '#6b7280' }}>
-                        {v}
-                      </span>
-                    )}
-                  />
+                      <span style={{ fontSize: 11, color: '#6b7280' }}>{v}</span>
+                    )} />
                 </PieChart>
               </ResponsiveContainer>
             ) : <EmptyChart />}
           </ChartCard>
 
-          {/* Severity summary cards */}
           <div className="bg-white rounded-2xl border border-gray-200
                           shadow-sm p-6">
             <h3 className="text-sm font-semibold text-gray-800 mb-1">
@@ -796,10 +670,9 @@ export default function AnalyticsPage() {
             <p className="text-xs text-gray-400 mb-5">
               Risk count by severity level
             </p>
-
             {loading ? (
               <div className="space-y-3">
-                {[1,2,3].map(i => (
+                {[1, 2, 3].map(i => (
                   <div key={i}
                     className="h-16 bg-gray-100 rounded-xl animate-pulse" />
                 ))}
@@ -816,12 +689,10 @@ export default function AnalyticsPage() {
                       className="flex items-center gap-4 p-4 rounded-xl
                                  border border-gray-100 hover:border-gray-200
                                  transition">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center
-                                   justify-center text-white text-sm font-bold
-                                   shrink-0"
-                        style={{ backgroundColor: colour }}
-                      >
+                      <div className="w-10 h-10 rounded-xl flex items-center
+                                      justify-center text-white text-sm
+                                      font-bold shrink-0"
+                        style={{ backgroundColor: colour }}>
                         {item.name[0]}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -831,22 +702,14 @@ export default function AnalyticsPage() {
                           </span>
                           <span className="text-sm font-bold text-gray-800">
                             {item.count}
-                            <span className="text-xs text-gray-400 font-normal
-                                             ml-1">
+                            <span className="text-xs text-gray-400 font-normal ml-1">
                               ({pct}%)
                             </span>
                           </span>
                         </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full
-                                        overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all
-                                       duration-700"
-                            style={{
-                              width: `${pct}%`,
-                              backgroundColor: colour,
-                            }}
-                          />
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${pct}%`, backgroundColor: colour }} />
                         </div>
                       </div>
                     </div>
