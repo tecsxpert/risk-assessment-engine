@@ -120,6 +120,7 @@
             <optional>true</optional>
         </dependency>
 
+
         <!-- Flyway DB Migrations -->
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -157,7 +158,6 @@
             <version>1.19.7</version>
             <scope>test</scope>
         </dependency>
-
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
