@@ -553,3 +553,129 @@ This ensures strong protection against:
 - API abuse  
 
 The implementation aligns with modern backend security standards and demonstrates production-ready security practices.
+
+---
+
+# 📅 DAY 6 – 27 April 2026  
+
+## 🔴 Primary Task  
+
+Implement **AiServiceClient.java** to enable secure communication between the Java backend and the Flask AI service with:
+
+- REST API integration  
+- 10-second timeout handling  
+- Graceful error handling (null return on failure)  
+
+---
+
+## 🎯 Objective  
+
+To establish a **robust and fault-tolerant integration layer** between:
+
+- Java Backend (Spring Boot)  
+- AI Service (Flask API)  
+
+This enables the backend to safely consume AI responses while maintaining stability under failure scenarios.
+
+---
+
+## 🛠️ Work Completed  
+
+### ✔ Spring Boot Backend Setup  
+
+A fully functional backend was created using:
+
+- Maven-based Spring Boot project  
+- Java 17 (LTS)  
+- Spring Boot 3.5.x  
+- Dependency: `spring-boot-starter-web`  
+
+---
+
+### ✔ AiServiceClient Implementation (Core Deliverable)  
+
+A service class was implemented to handle all external calls to the Flask AI service.
+
+#### 🔹 Responsibilities  
+
+- Send HTTP requests to Flask endpoints  
+- Process API responses  
+- Handle exceptions safely  
+- Enforce timeout constraints  
+
+---
+
+### ✔ Supported Endpoints Integration  
+
+| Endpoint | Method | Purpose |
+|--------|--------|--------|
+| `/health` | GET | Service availability check |
+| `/test` | POST | Input validation testing |
+| `/analyze` | POST | Risk analysis processing |
+
+---
+
+### ✔ Timeout Configuration  
+
+- Implemented using `RestTemplateBuilder`  
+- Configured timeout:
+
+
+This prevents backend blocking due to slow or unresponsive AI service.
+
+---
+
+### ✔ Graceful Error Handling  
+
+- All API calls wrapped in try-catch blocks  
+- On failure:
+  - No application crash  
+  - Null response returned  
+  - Error logged safely  
+
+---
+
+### ✔ Controller Integration  
+
+A test endpoint was created:
+
+
+#### Flow:
+
+1. Request received by backend (port 8080)  
+2. Backend invokes Flask `/health` endpoint  
+3. Response returned to client  
+
+---
+
+## 🖼️ Execution Evidence  
+
+### 🔹 Spring Boot Running (VS Code)
+![Spring Boot Running](images/day6_springboot_running.png)
+
+---
+
+### 🔹 Flask AI Service Running (Port 5000)
+![Flask Running](images/day6_flask_running_5000.png)
+
+---
+
+### 🔹 Backend Running (Port 8080)
+![Backend Running](images/day6_backend_running_8080.png)
+
+---
+
+## 🧪 Testing  
+
+### 🔹 Endpoint Tested  
+
+
+---
+
+### 🔹 Expected Output  
+
+```json
+{
+  "status": "AI service is running"
+}
+```
