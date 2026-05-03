@@ -3,6 +3,8 @@ package com.internship.backend.service;
 import com.internship.backend.entity.RiskRecord;
 import com.internship.backend.exception.ResourceNotFoundException;
 import com.internship.backend.repository.RiskRecordRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,8 @@ import java.util.List;
 
 @Service
 public class RiskRecordService {
+
+    private static final Logger logger = LoggerFactory.getLogger(RiskRecordService.class);
 
     private final RiskRecordRepository repository;
     private final EmailService emailService;
@@ -38,11 +42,12 @@ public class RiskRecordService {
 
         RiskRecord saved = repository.save(riskRecord);
 
+        // async email (safe logging)
         new Thread(() -> {
             try {
                 emailService.sendCreateNotification(saved);
             } catch (Exception e) {
-                System.out.println("Email failed but record saved successfully.");
+                logger.warn("Email failed but record saved successfully.");
             }
         }).start();
 
