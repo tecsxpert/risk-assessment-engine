@@ -1,4 +1,14 @@
-venv/
+.env
+target/
+backend/.m2/
+.m2/
+node_modules/
 __pycache__/
 *.pyc
-.env
+chroma_data/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+venv/
